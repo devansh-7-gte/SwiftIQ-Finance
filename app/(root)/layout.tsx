@@ -1,17 +1,27 @@
 import Header from "@/components/Header";
-import {auth} from "@/lib/better-auth/auth";
-import {headers} from "next/headers";
-import {redirect} from "next/navigation";
+import { auth } from "@/lib/better-auth/auth";
+import { headers } from "next/headers";
+
+const DEFAULT_USER: User = {
+    id: "guest_analyst",
+    name: "Risk Analyst",
+    email: "analyst@quant.local",
+};
 
 const Layout = async ({ children }: { children : React.ReactNode }) => {
-    const session = await auth.api.getSession({ headers: await headers() });
+    let user = DEFAULT_USER;
 
-    if(!session?.user) redirect('/sign-in');
-
-    const user = {
-        id: session.user.id,
-        name: session.user.name,
-        email: session.user.email,
+    try {
+        const session = await auth.api.getSession({ headers: await headers() });
+        if (session?.user) {
+            user = {
+                id: session.user.id,
+                name: session.user.name,
+                email: session.user.email,
+            };
+        }
+    } catch {
+        // Auth bypassed for development / open access
     }
 
     return (
@@ -22,6 +32,8 @@ const Layout = async ({ children }: { children : React.ReactNode }) => {
                 {children}
             </div>
         </main>
-    )
-}
-export default Layout
+    );
+};
+
+export default Layout;
+

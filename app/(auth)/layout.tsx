@@ -12,8 +12,9 @@ const Layout = async ({ children }: { children : React.ReactNode }) => {
     return (
         <main className="auth-layout">
             <section className="auth-left-section scrollbar-hide-default">
-                <Link href="/" className="auth-logo">
-                    <Image src="/assets/icons/logo.svg" alt="Signalist logo" width={140} height={32} className='h-8 w-auto' />
+                <Link href="/" className="auth-logo flex items-center gap-2">
+                    <Image src="/assets/icons/logo.svg" alt="SwiftIq Finance logo" width={32} height={32} className='h-8 w-auto' />
+                    <span className="text-xl font-bold tracking-tight text-white">Swift<span className="text-yellow-500">Iq</span></span>
                 </Link>
 
                 <div className="pb-6 lg:pb-8 flex-1">{children}</div>
@@ -22,7 +23,7 @@ const Layout = async ({ children }: { children : React.ReactNode }) => {
             <section className="auth-right-section">
                 <div className="z-10 relative lg:mt-4 lg:mb-16">
                     <blockquote className="auth-blockquote">
-                        Signalist turned my watchlist into a winning list. The alerts are spot-on, and I feel more confident making moves in the market
+                        SwiftIq Finance gives our desk instant clarity on portfolio tail risk, multi-asset stress testing, and non-linear option exposures.
                     </blockquote>
                     <div className="flex items-center justify-between">
                         <div>

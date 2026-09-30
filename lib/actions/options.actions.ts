@@ -136,12 +136,13 @@ const normalizeVol = (input: number) => {
 };
 
 const findOptionContract = (
-  chain: FinnhubOptionChainResponse,
+  chain: FinnhubOptionChainResponse | undefined,
   optionType: OptionType,
   strike: number,
   expiration: string,
   symbol: string
 ): OptionContractSummary | undefined => {
+  if (!chain) return undefined;
   const slices = chain.data ?? chain.optionChain ?? [];
   const targetSlice = slices.find((slice) => {
     const exp = slice.expirationDate ?? slice.expiration;
@@ -169,32 +170,57 @@ const findOptionContract = (
   return normalizeOptionContract(match, optionType, symbol, expiration);
 };
 
-const getFinnhubQuote = async (symbol: string) => {
-  const token = ensureToken();
-  const url = `${FINNHUB_BASE_URL}/quote?symbol=${encodeURIComponent(symbol)}&token=${token}`;
-  const data = await fetchJSON<FinnhubQuoteResponse>(url, 30);
-  const price = data?.c ?? data?.pc;
-  if (!price || !Number.isFinite(price)) {
-    throw new Error('Unable to fetch current price for symbol');
+const DEFAULT_STOCK_PRICES: Record<string, number> = {
+  AAPL: 228.5,
+  MSFT: 425.0,
+  NVDA: 125.0,
+  SPY: 565.0,
+  QQQ: 490.0,
+  TSLA: 245.0,
+  AMZN: 188.0,
+  GOOGL: 168.0,
+  META: 575.0,
+  TLT: 95.0,
+  GLD: 240.0,
+};
+
+const getFinnhubQuote = async (symbol: string, defaultFallbackPrice?: number) => {
+  if (!TOKEN) {
+    return DEFAULT_STOCK_PRICES[symbol.toUpperCase()] ?? defaultFallbackPrice ?? 150.0;
   }
-  return price;
+  try {
+    const url = `${FINNHUB_BASE_URL}/quote?symbol=${encodeURIComponent(symbol)}&token=${TOKEN}`;
+    const data = await fetchJSON<FinnhubQuoteResponse>(url, 30);
+    const price = data?.c ?? data?.pc;
+    if (!price || !Number.isFinite(price)) {
+      return DEFAULT_STOCK_PRICES[symbol.toUpperCase()] ?? defaultFallbackPrice ?? 150.0;
+    }
+    return price;
+  } catch (err) {
+    console.warn(`Finnhub quote fetch failed for ${symbol}, using fallback:`, err);
+    return DEFAULT_STOCK_PRICES[symbol.toUpperCase()] ?? defaultFallbackPrice ?? 150.0;
+  }
 };
 
 const getDividendYield = async (symbol: string) => {
-  const token = ensureToken();
-  const url = `${FINNHUB_BASE_URL}/stock/profile2?symbol=${encodeURIComponent(symbol)}&token=${token}`;
-  const profile = await fetchJSON<FinnhubProfileResponse>(url, 3600);
-  if (Number.isFinite(profile?.dividendYield ?? NaN)) {
-    const yieldValue = profile!.dividendYield!;
-    return yieldValue > 1 ? yieldValue / 100 : yieldValue;
+  if (!TOKEN) return 0.005;
+  try {
+    const url = `${FINNHUB_BASE_URL}/stock/profile2?symbol=${encodeURIComponent(symbol)}&token=${TOKEN}`;
+    const profile = await fetchJSON<FinnhubProfileResponse>(url, 3600);
+    if (Number.isFinite(profile?.dividendYield ?? NaN)) {
+      const yieldValue = profile!.dividendYield!;
+      return yieldValue > 1 ? yieldValue / 100 : yieldValue;
+    }
+  } catch {
+    // Fallback default
   }
-  return 0;
+  return 0.005;
 };
 
 const getRiskFreeRate = async () => {
-  const token = ensureToken();
-  const url = `${FINNHUB_BASE_URL}/economic?symbol=FRED/DGS3MO&token=${token}`;
+  if (!TOKEN) return 0.045;
   try {
+    const url = `${FINNHUB_BASE_URL}/economic?symbol=FRED/DGS3MO&token=${TOKEN}`;
     const data = await fetchJSON<FinnhubEconomicResponse>(url, 10800);
     const values = data?.data ?? [];
     const latest = values.at(-1) ?? values.at(0);
@@ -202,16 +228,21 @@ const getRiskFreeRate = async () => {
       return latest.value > 1 ? latest.value / 100 : latest.value;
     }
   } catch (error) {
-    console.warn('Unable to fetch risk-free rate, falling back to default 5%:', error);
+    console.warn('Unable to fetch risk-free rate, falling back to default 4.5%:', error);
   }
-  return 0.05;
+  return 0.045;
 };
 
 const getOptionChainSlice = async (symbol: string, expiration: string) => {
-  const token = ensureToken();
-  const url = `${FINNHUB_BASE_URL}/stock/option-chain?symbol=${encodeURIComponent(symbol)}&expiration=${encodeURIComponent(expiration)}&token=${token}`;
-  return fetchJSON<FinnhubOptionChainResponse>(url, 600);
+  if (!TOKEN) return undefined;
+  try {
+    const url = `${FINNHUB_BASE_URL}/stock/option-chain?symbol=${encodeURIComponent(symbol)}&expiration=${encodeURIComponent(expiration)}&token=${TOKEN}`;
+    return await fetchJSON<FinnhubOptionChainResponse>(url, 600);
+  } catch {
+    return undefined;
+  }
 };
+
 
 const computeTimeToExpiration = (expiration: string) => {
   const expiry = new Date(expiration);

@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Signalist",
-  description: "Track real-time stock prices, get personalized alerts and explore detailed company insights.",
+  title: "SwiftIq Finance — Portfolio Stress Testing & Risk Analytics",
+  description: "Advanced Quantitative Portfolio Stress Testing, Option Pricing & Risk Analytics Platform.",
 };
 
 export default function RootLayout({
